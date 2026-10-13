@@ -15,7 +15,7 @@ python3 -m http.server 8000      # then visit http://localhost:8000
 
 Three files, no framework, no bundler:
 
-- **`index.html`** — DOM structure: `<canvas id="board">` (300×600px) for the playfield, `<canvas id="next-canvas">` (120×120px) for the preview, sidebar HUD (`#score`, `#lines`, `#level`), and a shared overlay `#overlay` for both PAUSE and GAME OVER states.
+- **`index.html`** — DOM structure: `<canvas id="board">` (300×600px) for the playfield, `<canvas id="next-canvas">` (120×120px) for the preview, sidebar HUD (`#score`, `#lines`, `#level`), an `#overlay` for GAME OVER, and a separate `#pause-menu` overlay (Reanudar / Reiniciar / Ver controles / Nivel inicial).
 - **`style.css`** — Dark/retro arcade theme; uses CSS variables, flexbox, and `backdrop-filter` on overlays.
 - **`game.js`** — All game logic (~305 lines, `'use strict'`, no modules).
 
@@ -33,6 +33,8 @@ Three files, no framework, no bundler:
 | Speed | `dropInterval = max(100, 1000 − (level−1) × 90)` ms; level = `floor(lines/10) + 1` |
 | Ghost piece | `ghostY()` — projects current piece down until collision; drawn at `globalAlpha = 0.2` |
 | State flags | `paused`, `gameOver`, `animId` (RAF handle) |
+| Pause menu | `togglePause()` (P/Escape) → `openPauseMenu()`/`closePauseMenu()`; game input blocked while paused and for `RESUME_GRACE_MS` (150ms) after resuming, plus `e.repeat` ignored until a fresh keypress |
+| Start level | `startLevel` (1–10, `localStorage 'tetris-start-level'`), applied by `init()`; `clearLines()` never lowers `level` below it |
 
 ### Game flow
 
