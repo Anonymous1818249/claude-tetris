@@ -36,7 +36,11 @@ Three files, no framework, no bundler:
 
 ### Game flow
 
-`init()` → `spawn()` → `requestAnimationFrame(loop)`. Each frame: accumulate dt → auto-drop or `lockPiece()` → `draw()`. `lockPiece()` = `merge()` + `clearLines()` + `spawn()`. If `spawn()` immediately collides → `endGame()`.
+On load only the start screen (`#start-screen`, records) is shown and input is ignored; "Jugar" sets `started = true` and calls `init()` → `spawn()` → `requestAnimationFrame(loop)`. Each frame: accumulate dt → auto-drop or `lockPiece()` → `draw()`. `lockPiece()` = `merge()` + `updateCombo(clearLines())` + `spawn()`. If `spawn()` immediately collides → `endGame()` → `showGameOverRecords()`.
+
+### Records
+
+`/* ---- Records ---- */` block at the end of game.js: top 5 in `localStorage 'tetris-highscores'` (`[{name, score, lines, combo, date}]`), plus `tetris-best-combo` and `tetris-max-lines`. `combo` counts consecutive line-clearing locks; `maxCombo` is per game. Names render via `textContent`; storage access is wrapped in try/catch.
 
 ## Tunable constants (top of game.js)
 
