@@ -126,6 +126,7 @@ function clearLines() {
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -153,7 +154,7 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  updateCombo(clearLines());
   spawn();
 }
 
@@ -327,6 +328,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  showGameOverRecords();
 }
 
 function togglePause() {
@@ -411,6 +413,7 @@ function loop(ts) {
 }
 
 function init() {
+  resetRecordsState();
   board = createBoard();
   score = 0;
   lines = 0;
@@ -431,6 +434,8 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  // ignorar teclas en pantalla de inicio o al escribir en un input
+  if (!started || e.target.tagName === 'INPUT') return;
   if (e.code === 'KeyP' || e.code === 'Escape') {
     if (!e.repeat) togglePause();
     return;
@@ -481,13 +486,13 @@ function applyTheme(isLight) {
   }
 }
 
-const savedTheme = localStorage.getItem('tetris-theme');
+const savedTheme = storageGet('tetris-theme');
 applyTheme(savedTheme === 'light');
 
 themeToggle.addEventListener('click', () => {
   const isLight = !document.body.classList.contains('light-mode');
   applyTheme(isLight);
-  localStorage.setItem('tetris-theme', isLight ? 'light' : 'dark');
+  storageSet('tetris-theme', isLight ? 'light' : 'dark');
 });
 
 const skinSelect = document.getElementById('skin-select');
@@ -520,4 +525,166 @@ skinSelect.addEventListener('keydown', e => {
   }
 });
 
-init();
+/* ---- Records ---- */
+const HS_KEY = 'tetris-highscores';
+const COMBO_KEY = 'tetris-best-combo';
+const MAXLINES_KEY = 'tetris-max-lines';
+const HS_MAX = 5;
+
+const startScreen = document.getElementById('start-screen');
+const startRecordsBody = document.getElementById('start-records-body');
+const bestComboEl = document.getElementById('best-combo');
+const maxLinesEl = document.getElementById('max-lines');
+const gameoverRecords = document.getElementById('gameover-records');
+const gameoverRecordsBody = document.getElementById('gameover-records-body');
+const recordNote = document.getElementById('record-note');
+const nameForm = document.getElementById('name-form');
+const nameInput = document.getElementById('name-input');
+
+let started = false;   // false mientras se muestra la pantalla de inicio
+let combo = 0, maxCombo = 0, pendingRecord = false;
+
+// lectura/escritura segura de localStorage
+function storageGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* sin almacenamiento */ }
+}
+function storageRemove(key) {
+  try { localStorage.removeItem(key); } catch { /* sin almacenamiento */ }
+}
+
+function toCount(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+function loadHighScores() {
+  let data;
+  try { data = JSON.parse(storageGet(HS_KEY)); } catch { return []; }
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(e => e && typeof e === 'object' && typeof e.name === 'string')
+    .map(e => ({
+      name: e.name.slice(0, 12),
+      score: toCount(e.score),
+      lines: toCount(e.lines),
+      combo: toCount(e.combo),
+      date: typeof e.date === 'string' ? e.date : '',
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, HS_MAX);
+}
+
+function saveHighScores(list) {
+  storageSet(HS_KEY, JSON.stringify(list));
+}
+
+function qualifies(s, list) {
+  return s > 0 && (list.length < HS_MAX || s > list[list.length - 1].score);
+}
+
+// combo: locks consecutivos que limpian líneas
+function updateCombo(cleared) {
+  combo = cleared ? combo + 1 : 0;
+  if (combo > maxCombo) maxCombo = combo;
+}
+
+// filas de la tabla con textContent (sin innerHTML con datos del usuario)
+function renderTable(tbody, list, highlight) {
+  tbody.replaceChildren();
+  if (!list.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.className = 'empty';
+    td.textContent = 'Sin récords';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+  list.forEach((e, i) => {
+    const tr = document.createElement('tr');
+    if (e === highlight) tr.classList.add('highlight');
+    [i + 1, e.name, e.score.toLocaleString(), e.lines, e.combo].forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function renderStartScreen() {
+  renderTable(startRecordsBody, loadHighScores(), null);
+  bestComboEl.textContent = toCount(storageGet(COMBO_KEY));
+  maxLinesEl.textContent = toCount(storageGet(MAXLINES_KEY));
+}
+
+function resetRecordsState() {
+  // si se reinicia sin guardar, guardar como Anónimo
+  if (pendingRecord) saveRecord();
+  combo = 0;
+  maxCombo = 0;
+  pendingRecord = false;
+  gameoverRecords.classList.add('hidden');
+  recordNote.classList.add('hidden');
+  nameForm.classList.add('hidden');
+}
+
+function showGameOverRecords() {
+  // mejor combo y líneas máximas, siempre
+  if (maxCombo > toCount(storageGet(COMBO_KEY))) storageSet(COMBO_KEY, String(maxCombo));
+  if (lines > toCount(storageGet(MAXLINES_KEY))) storageSet(MAXLINES_KEY, String(lines));
+
+  const list = loadHighScores();
+  pendingRecord = qualifies(score, list);
+  recordNote.classList.toggle('hidden', !pendingRecord);
+  nameForm.classList.toggle('hidden', !pendingRecord);
+  renderTable(gameoverRecordsBody, list, null);
+  gameoverRecords.classList.remove('hidden');
+  if (pendingRecord) {
+    nameInput.value = '';
+    nameInput.focus();
+  }
+}
+
+function saveRecord() {
+  if (!pendingRecord) return;
+  pendingRecord = false;
+  const entry = {
+    name: nameInput.value.trim().slice(0, 12) || 'Anónimo',
+    score, lines, combo: maxCombo,
+    date: new Date().toISOString(),
+  };
+  const list = loadHighScores();
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  const top = list.slice(0, HS_MAX);
+  saveHighScores(top);
+  nameForm.classList.add('hidden');
+  nameInput.blur();
+  renderTable(gameoverRecordsBody, top, entry);
+}
+
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();   // Enter o botón Guardar
+  saveRecord();
+});
+
+document.getElementById('play-btn').addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  started = true;
+  init();
+});
+
+document.getElementById('reset-records-btn').addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los records?')) return;
+  storageRemove(HS_KEY);
+  storageRemove(COMBO_KEY);
+  storageRemove(MAXLINES_KEY);
+  renderStartScreen();
+});
+
+renderStartScreen();
