@@ -234,3 +234,41 @@ kbd {
 #restart-btn:hover {
   background: #9bbdff;
 }
+
+/* ---- Skins ---- */
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--kbd-text);
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s, border-color 0.25s;
+}
+
+.skin-select:focus {
+  outline: 1px solid #7aa2f7;
+}
+
+/* Neon: fondo negro en ambos modos (va después de light-mode y gana) */
+body[data-skin="neon"] {
+  --canvas-bg: #000;
+  --grid-line: #0e1420;
+}
+
+body[data-skin="neon"] #board {
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
+}
+
+/* Pastel: fondo suave */
+body[data-skin="pastel"] {
+  --canvas-bg: #24212e;
+  --grid-line: #2e2a3a;
+}
+
+body.light-mode[data-skin="pastel"] {
+  --canvas-bg: #fbf6fc;
+  --grid-line: #eee4f2;
+}

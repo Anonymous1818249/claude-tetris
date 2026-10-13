@@ -17,7 +17,7 @@ Three files, no framework, no bundler:
 
 - **`index.html`** — DOM structure: `<canvas id="board">` (300×600px) for the playfield, `<canvas id="next-canvas">` (120×120px) for the preview, sidebar HUD (`#score`, `#lines`, `#level`), and a shared overlay `#overlay` for both PAUSE and GAME OVER states.
 - **`style.css`** — Dark/retro arcade theme; uses CSS variables, flexbox, and `backdrop-filter` on overlays.
-- **`game.js`** — All game logic (~305 lines, `'use strict'`, no modules).
+- **`game.js`** — All game logic (~420 lines, `'use strict'`, no modules).
 
 ### game.js internals
 
@@ -33,6 +33,7 @@ Three files, no framework, no bundler:
 | Speed | `dropInterval = max(100, 1000 − (level−1) × 90)` ms; level = `floor(lines/10) + 1` |
 | Ghost piece | `ghostY()` — projects current piece down until collision; drawn at `globalAlpha = 0.2` |
 | State flags | `paused`, `gameOver`, `animId` (RAF handle) |
+| Skins | `SKINS` (`retro`/`neon`/`pastel`/`pixel`), each `{ colors, draw(ctx, px, py, size, color) }`; `drawBlock()` delegates to `SKINS[activeSkin]`; `applySkin(name)` sets `body[data-skin]` (CSS overrides `--canvas-bg`/`--grid-line`) and redraws; saved in `localStorage 'tetris-skin'` |
 
 ### Game flow
 
